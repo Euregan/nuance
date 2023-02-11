@@ -1,3 +1,12 @@
 import { Elm } from "./Main.elm";
 
-Elm.Main.init({ node: document.getElementById("root") });
+const node = document.getElementById("root");
+
+if (node) {
+  Elm.Main.init({
+    node,
+    flags: {
+      size: [node.clientWidth, node.clientHeight],
+    },
+  });
+}

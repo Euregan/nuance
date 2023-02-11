@@ -13,6 +13,11 @@ type NumberNode
     | NumberAddition (Maybe NumberNode) (Maybe NumberNode)
 
 
+height : Node -> Float
+height node =
+    40
+
+
 view : Node -> Html msg
 view node =
     case node of
@@ -22,12 +27,14 @@ view node =
 
 numberView : NumberNode -> Html msg
 numberView node =
-    case node of
-        NumberConstant constant ->
-            div [ class "w-24 h-24" ] [ input [ type_ "number", value <| Maybe.withDefault "" <| Maybe.map String.fromFloat constant ] [] ]
+    div [ class "w-full h-full bg-red-600 p-2" ]
+        [ case node of
+            NumberConstant constant ->
+                input [ type_ "number", value <| Maybe.withDefault "" <| Maybe.map String.fromFloat constant ] []
 
-        NumberAddition _ _ ->
-            div [ class "w-24 h-24" ] [ text "Addition" ]
+            NumberAddition _ _ ->
+                text "Addition"
+        ]
 
 
 depth : Node -> Int
