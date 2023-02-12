@@ -1,4 +1,4 @@
-module Expression exposing (fromNode)
+module Expression exposing (Expression(..), NumberExpression(..), fromNode)
 
 import Expression.Errors as Errors exposing (Errors)
 import Node exposing (Node(..), NumberNode(..))

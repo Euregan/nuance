@@ -2,11 +2,12 @@ module Graph exposing (..)
 
 import Array exposing (Array)
 import Graph.Links as Links exposing (Link, Links, Position)
-import Html exposing (Html)
+import Html exposing (Html, button, div, text)
+import Html.Events exposing (onClick)
 import IdDict exposing (IdDict)
 import Node exposing (Node(..), NumberNode(..))
 import Svg exposing (Svg, foreignObject, path, svg)
-import Svg.Attributes exposing (d, fill, height, stroke, strokeWidth, width, x, y)
+import Svg.Attributes exposing (class, d, fill, height, stroke, strokeWidth, width, x, y)
 import UUID exposing (UUID)
 
 
@@ -29,8 +30,13 @@ type alias Graph =
     Node
 
 
-view : ( Float, Float ) -> Graph -> Html msg
-view ( width, height ) graph =
+type alias Actions msg =
+    { run : msg
+    }
+
+
+view : ( Float, Float ) -> Graph -> Actions msg -> Html msg
+view ( width, height ) graph actions =
     let
         metadata =
             buildMetadata ( width, height ) graph
@@ -39,7 +45,18 @@ view ( width, height ) graph =
         List.concat
             [ viewNode metadata graph
             , viewLinks metadata.links
+            , controls actions
             ]
+
+
+controls : Actions msg -> List (Svg msg)
+controls actions =
+    [ foreignObject [ class "w-20 h-10" ]
+        [ div []
+            [ button [ onClick actions.run ] [ text "Run" ]
+            ]
+        ]
+    ]
 
 
 viewNode : DisplayGraph -> Node -> List (Svg msg)

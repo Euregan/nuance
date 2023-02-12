@@ -1,13 +1,17 @@
 module Main exposing (..)
 
 import Browser
+import Expression exposing (Expression)
+import Expression.Errors exposing (Errors)
 import Graph exposing (Graph)
 import Html exposing (Html)
+import Interpreter exposing (interpret)
 import Node exposing (Node(..), NumberNode(..))
 import Random
 import UUID
 
 
+main : Program Flags Model Msg
 main =
     Browser.element
         { init = init
@@ -20,6 +24,8 @@ main =
 type alias Model =
     { size : ( Float, Float )
     , graph : Graph
+    , lastCompilation : Result Errors Expression
+    , lastResult : Maybe Interpreter.Result
     }
 
 
@@ -30,8 +36,8 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( { size = flags.size
-      , graph =
+    let
+        graph =
             NumberNode
                 (NumberAddition
                     (Random.step UUID.generator (Random.initialSeed 7) |> Tuple.first)
@@ -81,25 +87,37 @@ init flags =
                         )
                     )
                 )
+    in
+    ( { size = flags.size
+      , lastCompilation = Expression.fromNode graph
+      , lastResult = Nothing
+      , graph = graph
       }
     , Cmd.none
     )
 
 
 type Msg
-    = NoOp
+    = Run
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
+        Run ->
+            let
+                expression =
+                    Expression.fromNode model.graph
+            in
+            ( { model | lastCompilation = expression, lastResult = expression |> Result.map interpret |> Result.toMaybe }, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
-    Graph.view model.size model.graph
+    Graph.view model.size
+        model.graph
+        { run = Run
+        }
 
 
 subscriptions : Model -> Sub Msg
