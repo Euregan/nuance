@@ -148,11 +148,11 @@ viewLinks =
                         ++ " "
                         ++ String.fromFloat link.output.y
                         ++ " C"
-                        ++ (String.fromFloat <| link.output.x + verticalGap * 4)
+                        ++ (String.fromFloat <| link.output.x + horizontalGap)
                         ++ " "
                         ++ String.fromFloat link.output.y
                         ++ ", "
-                        ++ (String.fromFloat <| link.input.x - verticalGap * 4)
+                        ++ (String.fromFloat <| link.input.x - horizontalGap)
                         ++ " "
                         ++ String.fromFloat link.input.y
                         ++ ", "
