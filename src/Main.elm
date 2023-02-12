@@ -4,6 +4,8 @@ import Browser
 import Graph exposing (Graph)
 import Html exposing (Html)
 import Node exposing (Node(..), NumberNode(..))
+import Random
+import UUID
 
 
 main =
@@ -32,16 +34,39 @@ init flags =
       , graph =
             NumberNode
                 (NumberAddition
+                    (Random.step UUID.generator (Random.initialSeed 7) |> Tuple.first)
                     (Just
                         (NumberAddition
-                            (Just (NumberConstant (Just 1)))
-                            (Just (NumberConstant (Just 2)))
+                            (Random.step UUID.generator (Random.initialSeed 1) |> Tuple.first)
+                            (Just
+                                (NumberConstant
+                                    (Random.step UUID.generator (Random.initialSeed 2) |> Tuple.first)
+                                    (Just 1)
+                                )
+                            )
+                            (Just
+                                (NumberConstant
+                                    (Random.step UUID.generator (Random.initialSeed 3) |> Tuple.first)
+                                    (Just 2)
+                                )
+                            )
                         )
                     )
                     (Just
                         (NumberAddition
-                            (Just (NumberConstant (Just 3)))
-                            (Just (NumberConstant (Just 4)))
+                            (Random.step UUID.generator (Random.initialSeed 4) |> Tuple.first)
+                            (Just
+                                (NumberConstant
+                                    (Random.step UUID.generator (Random.initialSeed 5) |> Tuple.first)
+                                    (Just 3)
+                                )
+                            )
+                            (Just
+                                (NumberConstant
+                                    (Random.step UUID.generator (Random.initialSeed 6) |> Tuple.first)
+                                    (Just 4)
+                                )
+                            )
                         )
                     )
                 )

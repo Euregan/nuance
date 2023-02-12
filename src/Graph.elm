@@ -3,18 +3,21 @@ module Graph exposing (..)
 import Array exposing (Array)
 import Html exposing (Html)
 import Node exposing (Node(..), NumberNode(..))
-import Svg exposing (foreignObject, g, svg)
-import Svg.Attributes exposing (class, height, width, x, y)
+import Svg exposing (foreignObject, svg)
+import Svg.Attributes exposing (height, width, x, y)
 
 
+columnWidth : Float
 columnWidth =
     250
 
 
+horizontalGap : Float
 horizontalGap =
     100
 
 
+verticalGap : Float
 verticalGap =
     20
 
@@ -77,12 +80,12 @@ viewNode depth metadata node =
             }
     in
     case node of
-        NumberNode (NumberConstant _) ->
+        NumberNode (NumberConstant _ _) ->
             ( [ renderedNode ]
             , updatedMetadata
             )
 
-        NumberNode (NumberAddition (Just nodeA) (Just nodeB)) ->
+        NumberNode (NumberAddition _ (Just nodeA) (Just nodeB)) ->
             let
                 ( left, leftMetadata ) =
                     viewNode (depth + 1) updatedMetadata (NumberNode nodeA)
@@ -98,7 +101,7 @@ viewNode depth metadata node =
             , rightMetadata
             )
 
-        NumberNode (NumberAddition (Just nodeA) Nothing) ->
+        NumberNode (NumberAddition _ (Just nodeA) Nothing) ->
             let
                 ( left, leftMetadata ) =
                     viewNode (depth + 1) updatedMetadata (NumberNode nodeA)
@@ -107,7 +110,7 @@ viewNode depth metadata node =
             , leftMetadata
             )
 
-        NumberNode (NumberAddition Nothing (Just nodeB)) ->
+        NumberNode (NumberAddition _ Nothing (Just nodeB)) ->
             let
                 ( right, righMetadata ) =
                     viewNode (depth + 1) updatedMetadata (NumberNode nodeB)
@@ -116,7 +119,7 @@ viewNode depth metadata node =
             , righMetadata
             )
 
-        NumberNode (NumberAddition Nothing Nothing) ->
+        NumberNode (NumberAddition _ Nothing Nothing) ->
             ( [ renderedNode ]
             , updatedMetadata
             )
@@ -144,21 +147,21 @@ buildMetadata ( width, height ) graph =
                     }
             in
             case node of
-                NumberNode (NumberConstant _) ->
+                NumberNode (NumberConstant _ _) ->
                     updatedMetadata
 
-                NumberNode (NumberAddition (Just nodeA) (Just nodeB)) ->
+                NumberNode (NumberAddition _ (Just nodeA) (Just nodeB)) ->
                     updatedMetadata
                         |> buildNodeMetadata (NumberNode nodeA) (depth + 1)
                         |> buildNodeMetadata (NumberNode nodeB) (depth + 1)
 
-                NumberNode (NumberAddition (Just nodeA) Nothing) ->
+                NumberNode (NumberAddition _ (Just nodeA) Nothing) ->
                     buildNodeMetadata (NumberNode nodeA) (depth + 1) updatedMetadata
 
-                NumberNode (NumberAddition Nothing (Just nodeB)) ->
+                NumberNode (NumberAddition _ Nothing (Just nodeB)) ->
                     buildNodeMetadata (NumberNode nodeB) (depth + 1) updatedMetadata
 
-                NumberNode (NumberAddition Nothing Nothing) ->
+                NumberNode (NumberAddition _ Nothing Nothing) ->
                     updatedMetadata
     in
     buildNodeMetadata graph 0 { itemCount = Array.empty, size = { width = width, height = height } }

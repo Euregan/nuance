@@ -2,6 +2,7 @@ module Node exposing (..)
 
 import Html exposing (Html, div, input, text)
 import Html.Attributes exposing (class, type_, value)
+import UUID exposing (UUID)
 
 
 type Node
@@ -9,12 +10,12 @@ type Node
 
 
 type NumberNode
-    = NumberConstant (Maybe Float)
-    | NumberAddition (Maybe NumberNode) (Maybe NumberNode)
+    = NumberConstant UUID (Maybe Float)
+    | NumberAddition UUID (Maybe NumberNode) (Maybe NumberNode)
 
 
 height : Node -> Float
-height node =
+height _ =
     40
 
 
@@ -29,10 +30,10 @@ numberView : NumberNode -> Html msg
 numberView node =
     div [ class "w-full h-full bg-red-600 p-2" ]
         [ case node of
-            NumberConstant constant ->
+            NumberConstant _ constant ->
                 input [ type_ "number", value <| Maybe.withDefault "" <| Maybe.map String.fromFloat constant ] []
 
-            NumberAddition _ _ ->
+            NumberAddition _ _ _ ->
                 text "Addition"
         ]
 
@@ -47,17 +48,17 @@ depth node =
 numberDepth : NumberNode -> Int
 numberDepth node =
     case node of
-        NumberConstant _ ->
+        NumberConstant _ _ ->
             1
 
-        NumberAddition (Just inputA) (Just inputB) ->
+        NumberAddition _ (Just inputA) (Just inputB) ->
             1 + max (numberDepth inputA) (numberDepth inputB)
 
-        NumberAddition (Just inputA) Nothing ->
+        NumberAddition _ (Just inputA) Nothing ->
             1 + numberDepth inputA
 
-        NumberAddition Nothing (Just inputB) ->
+        NumberAddition _ Nothing (Just inputB) ->
             1 + numberDepth inputB
 
-        NumberAddition Nothing Nothing ->
+        NumberAddition _ Nothing Nothing ->
             1
