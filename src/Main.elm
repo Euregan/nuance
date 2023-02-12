@@ -45,9 +45,20 @@ init flags =
                                 )
                             )
                             (Just
-                                (NumberConstant
-                                    (Random.step UUID.generator (Random.initialSeed 3) |> Tuple.first)
-                                    (Just 2)
+                                (NumberAddition
+                                    (Random.step UUID.generator (Random.initialSeed 534) |> Tuple.first)
+                                    (Just
+                                        (NumberConstant
+                                            (Random.step UUID.generator (Random.initialSeed 89) |> Tuple.first)
+                                            (Just 3)
+                                        )
+                                    )
+                                    (Just
+                                        (NumberConstant
+                                            (Random.step UUID.generator (Random.initialSeed 23) |> Tuple.first)
+                                            (Just 4)
+                                        )
+                                    )
                                 )
                             )
                         )
