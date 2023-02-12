@@ -6,7 +6,7 @@ import Expression.Errors exposing (Errors)
 import Graph exposing (Graph)
 import Html exposing (Html)
 import Interpreter exposing (interpret)
-import Node exposing (Node(..), NumberNode(..))
+import Node exposing (Node(..), NumberNode(..), State(..))
 import Random
 import UUID
 
@@ -40,28 +40,40 @@ init flags =
         graph =
             NumberNode
                 (NumberAddition
-                    (Random.step UUID.generator (Random.initialSeed 7) |> Tuple.first)
+                    { id = Random.step UUID.generator (Random.initialSeed 7) |> Tuple.first
+                    , state = Result 15
+                    }
                     (Just
                         (NumberAddition
-                            (Random.step UUID.generator (Random.initialSeed 1) |> Tuple.first)
+                            { id = Random.step UUID.generator (Random.initialSeed 1) |> Tuple.first
+                            , state = Result 8
+                            }
                             (Just
                                 (NumberConstant
-                                    (Random.step UUID.generator (Random.initialSeed 2) |> Tuple.first)
+                                    { id = Random.step UUID.generator (Random.initialSeed 2) |> Tuple.first
+                                    , state = Result 1
+                                    }
                                     (Just 1)
                                 )
                             )
                             (Just
                                 (NumberAddition
-                                    (Random.step UUID.generator (Random.initialSeed 534) |> Tuple.first)
+                                    { id = Random.step UUID.generator (Random.initialSeed 534) |> Tuple.first
+                                    , state = Result 7
+                                    }
                                     (Just
                                         (NumberConstant
-                                            (Random.step UUID.generator (Random.initialSeed 89) |> Tuple.first)
+                                            { id = Random.step UUID.generator (Random.initialSeed 89) |> Tuple.first
+                                            , state = Result 3
+                                            }
                                             (Just 3)
                                         )
                                     )
                                     (Just
                                         (NumberConstant
-                                            (Random.step UUID.generator (Random.initialSeed 23) |> Tuple.first)
+                                            { id = Random.step UUID.generator (Random.initialSeed 23) |> Tuple.first
+                                            , state = Result 4
+                                            }
                                             (Just 4)
                                         )
                                     )
@@ -71,16 +83,22 @@ init flags =
                     )
                     (Just
                         (NumberAddition
-                            (Random.step UUID.generator (Random.initialSeed 4) |> Tuple.first)
+                            { id = Random.step UUID.generator (Random.initialSeed 4) |> Tuple.first
+                            , state = Result 7
+                            }
                             (Just
                                 (NumberConstant
-                                    (Random.step UUID.generator (Random.initialSeed 5) |> Tuple.first)
+                                    { id = Random.step UUID.generator (Random.initialSeed 5) |> Tuple.first
+                                    , state = Result 3
+                                    }
                                     (Just 3)
                                 )
                             )
                             (Just
                                 (NumberConstant
-                                    (Random.step UUID.generator (Random.initialSeed 6) |> Tuple.first)
+                                    { id = Random.step UUID.generator (Random.initialSeed 6) |> Tuple.first
+                                    , state = Result 4
+                                    }
                                     (Just 4)
                                 )
                             )
@@ -109,7 +127,12 @@ update msg model =
                 expression =
                     Expression.fromNode model.graph
             in
-            ( { model | lastCompilation = expression, lastResult = expression |> Result.map interpret |> Result.toMaybe }, Cmd.none )
+            ( { model
+                | lastCompilation = expression
+                , lastResult = expression |> Result.map interpret |> Result.toMaybe
+              }
+            , Cmd.none
+            )
 
 
 view : Model -> Html Msg

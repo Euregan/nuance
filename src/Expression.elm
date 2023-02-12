@@ -26,7 +26,7 @@ fromNumberNode node =
         Node.NumberConstant _ (Just constant) ->
             Ok (NumberConstant constant)
 
-        Node.NumberConstant id Nothing ->
+        Node.NumberConstant { id } Nothing ->
             Err <| Errors.singleton id "This constant needs to have a value"
 
         Node.NumberAddition _ (Just left) (Just right) ->
@@ -43,7 +43,7 @@ fromNumberNode node =
                 ( Ok _, Err rightErrors ) ->
                     Err rightErrors
 
-        Node.NumberAddition id (Just left) Nothing ->
+        Node.NumberAddition { id } (Just left) Nothing ->
             Err <|
                 Errors.union
                     (Errors.singleton id "This addition needs to have two values")
@@ -55,7 +55,7 @@ fromNumberNode node =
                             errors
                     )
 
-        Node.NumberAddition id Nothing (Just right) ->
+        Node.NumberAddition { id } Nothing (Just right) ->
             Err <|
                 Errors.union
                     (Errors.singleton id "This addition needs to have two values")
@@ -67,5 +67,5 @@ fromNumberNode node =
                             errors
                     )
 
-        Node.NumberAddition id Nothing Nothing ->
+        Node.NumberAddition { id } Nothing Nothing ->
             Err <| Errors.singleton id "This addition needs to have two values"

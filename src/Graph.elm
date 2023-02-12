@@ -5,9 +5,9 @@ import Graph.Links as Links exposing (Link, Links, Position)
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import IdDict exposing (IdDict)
-import Node exposing (Node(..), NumberNode(..))
-import Svg exposing (Svg, foreignObject, path, svg)
-import Svg.Attributes exposing (class, d, fill, height, stroke, strokeWidth, width, x, y)
+import Node exposing (Node(..), NumberNode(..), State(..), error, result)
+import Svg exposing (Svg, foreignObject, path, svg, text_)
+import Svg.Attributes exposing (class, d, dominantBaseline, fill, height, stroke, strokeWidth, textAnchor, width, x, y)
 import UUID exposing (UUID)
 
 
@@ -23,7 +23,7 @@ horizontalGap =
 
 verticalGap : Float
 verticalGap =
-    20
+    40
 
 
 type alias Graph =
@@ -43,8 +43,8 @@ view ( width, height ) graph actions =
     in
     svg [ Svg.Attributes.width <| String.fromFloat width, Svg.Attributes.height <| String.fromFloat height ] <|
         List.concat
-            [ viewNode metadata graph
-            , viewLinks metadata.links
+            [ viewLinks metadata.links
+            , viewNode metadata graph
             , controls actions
             ]
 
@@ -72,40 +72,69 @@ viewNode metadata node =
                 ]
                 [ Node.view node ]
 
-        render : UUID -> List (Svg msg)
-        render id =
+        render : UUID -> Maybe String -> Maybe String -> List (Svg msg)
+        render id maybeError maybeValue =
             case IdDict.get id metadata.nodes of
                 Nothing ->
                     []
 
                 Just ( position, size ) ->
-                    [ renderNode position size ]
+                    [ renderNode position size
+                    , Maybe.map
+                        (\value ->
+                            text_
+                                [ x <| String.fromFloat <| position.x - 5
+                                , y <| String.fromFloat <| position.y + size.height / 2
+                                , width <| String.fromFloat size.width
+                                , height <| String.fromFloat size.height
+                                , textAnchor "end"
+                                , dominantBaseline "middle"
+                                ]
+                                [ text value ]
+                        )
+                        maybeValue
+                        |> Maybe.withDefault (text "")
+                    , Maybe.map
+                        (\error ->
+                            text_
+                                [ x <| String.fromFloat <| position.x
+                                , y <| String.fromFloat <| position.y + size.height + 5
+                                , width <| String.fromFloat size.width
+                                , height <| String.fromFloat size.height
+                                , textAnchor "start"
+                                , dominantBaseline "hanging"
+                                ]
+                                [ text error ]
+                        )
+                        maybeError
+                        |> Maybe.withDefault (text "")
+                    ]
     in
     case node of
-        NumberNode (NumberConstant id _) ->
-            render id
+        NumberNode (NumberConstant { id, state } _) ->
+            render id (error state) (result String.fromFloat state)
 
-        NumberNode (NumberAddition id (Just left) (Just right)) ->
+        NumberNode (NumberAddition { id, state } (Just left) (Just right)) ->
             List.concat
-                [ render id
+                [ render id (error state) (result String.fromFloat state)
                 , viewNode metadata (NumberNode left)
                 , viewNode metadata (NumberNode right)
                 ]
 
-        NumberNode (NumberAddition id (Just left) Nothing) ->
+        NumberNode (NumberAddition { id, state } (Just left) Nothing) ->
             List.concat
-                [ render id
+                [ render id (error state) (result String.fromFloat state)
                 , viewNode metadata (NumberNode left)
                 ]
 
-        NumberNode (NumberAddition id Nothing (Just right)) ->
+        NumberNode (NumberAddition { id, state } Nothing (Just right)) ->
             List.concat
-                [ render id
+                [ render id (error state) (result String.fromFloat state)
                 , viewNode metadata (NumberNode right)
                 ]
 
-        NumberNode (NumberAddition id Nothing Nothing) ->
-            render id
+        NumberNode (NumberAddition { id, state } Nothing Nothing) ->
+            render id (error state) (result String.fromFloat state)
 
 
 viewLinks : Links -> List (Svg msg)
@@ -223,23 +252,23 @@ buildMetadata ( width, height ) graph =
                             }
             in
             case node of
-                NumberNode (NumberConstant id _) ->
+                NumberNode (NumberConstant { id } _) ->
                     updateMetadata id
 
-                NumberNode (NumberAddition id (Just left) (Just right)) ->
+                NumberNode (NumberAddition { id } (Just left) (Just right)) ->
                     updateMetadata id
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode left) (depth + 1)
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
 
-                NumberNode (NumberAddition id (Just left) Nothing) ->
+                NumberNode (NumberAddition { id } (Just left) Nothing) ->
                     updateMetadata id
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode left) (depth + 1)
 
-                NumberNode (NumberAddition id Nothing (Just right)) ->
+                NumberNode (NumberAddition { id } Nothing (Just right)) ->
                     updateMetadata id
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
 
-                NumberNode (NumberAddition id Nothing Nothing) ->
+                NumberNode (NumberAddition { id } Nothing Nothing) ->
                     updateMetadata id
 
         toDisplayGraph : Node -> Int -> Metadata -> DisplayGraph -> ( DisplayGraph, Metadata )
@@ -272,12 +301,12 @@ buildMetadata ( width, height ) graph =
                     }
             in
             case node of
-                NumberNode (NumberConstant id _) ->
+                NumberNode (NumberConstant { id } _) ->
                     ( { display | nodes = IdDict.insert id newNode display.nodes }
                     , updatedMetadata
                     )
 
-                NumberNode (NumberAddition id (Just left) (Just right)) ->
+                NumberNode (NumberAddition { id } (Just left) (Just right)) ->
                     let
                         ( leftDisplay, leftMetadata ) =
                             toDisplayGraph (NumberNode left) (depth + 1) updatedMetadata display
@@ -289,7 +318,7 @@ buildMetadata ( width, height ) graph =
                     , rightMetadata
                     )
 
-                NumberNode (NumberAddition id (Just left) Nothing) ->
+                NumberNode (NumberAddition { id } (Just left) Nothing) ->
                     let
                         ( leftDisplay, leftMetadata ) =
                             toDisplayGraph (NumberNode left) (depth + 1) updatedMetadata display
@@ -298,7 +327,7 @@ buildMetadata ( width, height ) graph =
                     , leftMetadata
                     )
 
-                NumberNode (NumberAddition id Nothing (Just right)) ->
+                NumberNode (NumberAddition { id } Nothing (Just right)) ->
                     let
                         ( rightDisplay, rightMetadata ) =
                             toDisplayGraph (NumberNode right) (depth + 1) updatedMetadata display
@@ -307,7 +336,7 @@ buildMetadata ( width, height ) graph =
                     , rightMetadata
                     )
 
-                NumberNode (NumberAddition id Nothing Nothing) ->
+                NumberNode (NumberAddition { id } Nothing Nothing) ->
                     ( { display | nodes = IdDict.insert id newNode display.nodes }
                     , updatedMetadata
                     )
@@ -342,10 +371,10 @@ buildMetadata ( width, height ) graph =
                         |> Maybe.withDefault links
             in
             case node of
-                NumberNode (NumberConstant id _) ->
+                NumberNode (NumberConstant { id } _) ->
                     { metadata | links = link id metadata.links }
 
-                NumberNode (NumberAddition id (Just left) (Just right)) ->
+                NumberNode (NumberAddition { id } (Just left) (Just right)) ->
                     let
                         leftMetadata =
                             updateLinks (output id 2 1) (NumberNode left) metadata
@@ -355,21 +384,21 @@ buildMetadata ( width, height ) graph =
                     in
                     { rightMetadata | links = link id rightMetadata.links }
 
-                NumberNode (NumberAddition id (Just left) Nothing) ->
+                NumberNode (NumberAddition { id } (Just left) Nothing) ->
                     let
                         leftMetadata =
                             updateLinks (output id 2 1) (NumberNode left) metadata
                     in
                     { leftMetadata | links = link id leftMetadata.links }
 
-                NumberNode (NumberAddition id Nothing (Just right)) ->
+                NumberNode (NumberAddition { id } Nothing (Just right)) ->
                     let
                         rightMetadata =
                             updateLinks (output id 2 2) (NumberNode right) metadata
                     in
                     { rightMetadata | links = link id rightMetadata.links }
 
-                NumberNode (NumberAddition id Nothing Nothing) ->
+                NumberNode (NumberAddition { id } Nothing Nothing) ->
                     { metadata | links = link id metadata.links }
     in
     buildNodesMetadata graph 0 { nodes = Array.empty, size = { width = width, height = height }, links = Links.empty }

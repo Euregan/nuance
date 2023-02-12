@@ -5,13 +5,44 @@ import Html.Attributes exposing (class, type_, value)
 import UUID exposing (UUID)
 
 
+type State a
+    = Error String
+    | Result a
+
+
+type alias Metadata a =
+    { id : UUID
+    , state : State a
+    }
+
+
 type Node
     = NumberNode NumberNode
 
 
 type NumberNode
-    = NumberConstant UUID (Maybe Float)
-    | NumberAddition UUID (Maybe NumberNode) (Maybe NumberNode)
+    = NumberConstant (Metadata Float) (Maybe Float)
+    | NumberAddition (Metadata Float) (Maybe NumberNode) (Maybe NumberNode)
+
+
+error : State a -> Maybe String
+error state =
+    case state of
+        Error err ->
+            Just err
+
+        Result _ ->
+            Nothing
+
+
+result : (a -> String) -> State a -> Maybe String
+result toString state =
+    case state of
+        Error _ ->
+            Nothing
+
+        Result value ->
+            Just <| toString value
 
 
 lines : Int -> Float
