@@ -41,7 +41,7 @@ init flags =
             NumberNode
                 (NumberAddition
                     { id = Random.step UUID.generator (Random.initialSeed 7) |> Tuple.first
-                    , state = Result 15
+                    , state = ErrorFurtherDown
                     }
                     (Just
                         (NumberAddition
@@ -84,7 +84,7 @@ init flags =
                     (Just
                         (NumberAddition
                             { id = Random.step UUID.generator (Random.initialSeed 4) |> Tuple.first
-                            , state = Result 7
+                            , state = Error "Missing a value"
                             }
                             (Just
                                 (NumberConstant
@@ -94,14 +94,7 @@ init flags =
                                     (Just 3)
                                 )
                             )
-                            (Just
-                                (NumberConstant
-                                    { id = Random.step UUID.generator (Random.initialSeed 6) |> Tuple.first
-                                    , state = Result 4
-                                    }
-                                    (Just 4)
-                                )
-                            )
+                            Nothing
                         )
                     )
                 )

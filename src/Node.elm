@@ -8,6 +8,7 @@ import UUID exposing (UUID)
 type State a
     = Error String
     | Result a
+    | ErrorFurtherDown
 
 
 type alias Metadata a =
@@ -34,6 +35,9 @@ error state =
         Result _ ->
             Nothing
 
+        ErrorFurtherDown ->
+            Nothing
+
 
 result : (a -> String) -> State a -> Maybe String
 result toString state =
@@ -43,6 +47,9 @@ result toString state =
 
         Result value ->
             Just <| toString value
+
+        ErrorFurtherDown ->
+            Nothing
 
 
 lines : Int -> Float
