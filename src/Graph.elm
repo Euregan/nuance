@@ -6,7 +6,7 @@ import Html exposing (Html)
 import IdDict exposing (IdDict)
 import Node exposing (Node(..), NumberNode(..))
 import Svg exposing (Svg, foreignObject, path, svg)
-import Svg.Attributes exposing (d, height, stroke, strokeWidth, width, x, y)
+import Svg.Attributes exposing (d, fill, height, stroke, strokeWidth, width, x, y)
 import UUID exposing (UUID)
 
 
@@ -96,9 +96,26 @@ viewLinks =
     Links.mapToList
         (\link ->
             path
-                [ d <| "M" ++ String.fromFloat link.output.x ++ " " ++ String.fromFloat link.output.y ++ " L" ++ String.fromFloat link.input.x ++ " " ++ String.fromFloat link.input.y
+                [ d <|
+                    "M"
+                        ++ String.fromFloat link.output.x
+                        ++ " "
+                        ++ String.fromFloat link.output.y
+                        ++ " C"
+                        ++ (String.fromFloat <| link.output.x + verticalGap * 4)
+                        ++ " "
+                        ++ String.fromFloat link.output.y
+                        ++ ", "
+                        ++ (String.fromFloat <| link.input.x - verticalGap * 4)
+                        ++ " "
+                        ++ String.fromFloat link.input.y
+                        ++ ", "
+                        ++ String.fromFloat link.input.x
+                        ++ " "
+                        ++ String.fromFloat link.input.y
                 , stroke "black"
                 , strokeWidth "2"
+                , fill "transparent"
                 ]
                 []
         )
