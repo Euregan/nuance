@@ -14,9 +14,19 @@ type NumberNode
     | NumberAddition UUID (Maybe NumberNode) (Maybe NumberNode)
 
 
+lines : Int -> Float
+lines count =
+    toFloat count * 40 + (toFloat count - 1) * 10
+
+
 height : Node -> Float
-height _ =
-    40
+height node =
+    case node of
+        NumberNode (NumberConstant _ _) ->
+            lines 1
+
+        NumberNode (NumberAddition _ _ _) ->
+            lines 2
 
 
 view : Node -> Html msg

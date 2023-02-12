@@ -56,7 +56,7 @@ viewNode depth metadata node =
         renderedNode =
             foreignObject
                 [ x <| String.fromFloat <| (metadata.size.width / 2) - ((toFloat <| Array.length metadata.itemCount) * (columnWidth + horizontalGap) - horizontalGap) / 2 + toFloat depth * (columnWidth + horizontalGap)
-                , y <| String.fromFloat <| (metadata.size.height / 2) - (Array.get depth metadata.itemCount |> Maybe.map .height |> Maybe.withDefault 0) / 2 + (Array.get depth metadata.itemCount |> Maybe.map .occupied |> Maybe.withDefault 0) - Node.height node / 2
+                , y <| String.fromFloat <| (metadata.size.height / 2) - (Array.get depth metadata.itemCount |> Maybe.map .height |> Maybe.withDefault 0) / 2 + (Array.get depth metadata.itemCount |> Maybe.map .occupied |> Maybe.withDefault 0)
                 , width <| String.fromFloat columnWidth
                 , height <| String.fromFloat <| Node.height node
                 ]
