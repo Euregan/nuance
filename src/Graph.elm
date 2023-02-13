@@ -5,9 +5,10 @@ import Graph.Links as Links exposing (Link, Links, Position)
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import IdDict exposing (IdDict)
-import Node exposing (Node(..), NumberNode(..), State(..), error, result)
-import Svg exposing (Svg, foreignObject, path, svg, text_)
-import Svg.Attributes exposing (class, d, dominantBaseline, fill, height, stroke, strokeWidth, textAnchor, width, x, y)
+import Node exposing (Actions, Node(..), NumberNode(..), State(..), error, result)
+import Svg exposing (Svg, circle, foreignObject, path, svg, text_)
+import Svg.Attributes exposing (class, cx, cy, d, dominantBaseline, fill, height, r, stroke, strokeWidth, textAnchor, width, x, y)
+import Svg.Events
 import UUID exposing (UUID)
 
 
@@ -30,9 +31,51 @@ type alias Graph =
     Node
 
 
-type alias Actions msg =
-    { run : msg
-    }
+replace : UUID -> Node -> Graph -> Graph
+replace id node graph =
+    case graph of
+        NumberNode numberNode ->
+            NumberNode <| replaceNumber id node numberNode
+
+
+replaceNumber : UUID -> Node -> NumberNode -> NumberNode
+replaceNumber id node currentNode =
+    case node of
+        NumberNode numberNode ->
+            let
+                replaceNode currentId =
+                    if currentId == id then
+                        numberNode
+
+                    else
+                        case currentNode of
+                            NumberGhost _ ->
+                                currentNode
+
+                            NumberConstant _ _ ->
+                                currentNode
+
+                            NumberAddition metadata (Just left) (Just right) ->
+                                NumberAddition metadata (Just (replaceNumber id node left)) (Just (replaceNumber id node right))
+
+                            NumberAddition metadata (Just left) Nothing ->
+                                NumberAddition metadata (Just (replaceNumber id node left)) Nothing
+
+                            NumberAddition metadata Nothing (Just right) ->
+                                NumberAddition metadata Nothing (Just (replaceNumber id node right))
+
+                            NumberAddition _ Nothing Nothing ->
+                                currentNode
+            in
+            case currentNode of
+                NumberGhost metadata ->
+                    replaceNode metadata.id
+
+                NumberConstant metadata _ ->
+                    replaceNode metadata.id
+
+                NumberAddition metadata _ _ ->
+                    replaceNode metadata.id
 
 
 view : ( Float, Float ) -> Graph -> Actions msg -> Html msg
@@ -44,7 +87,7 @@ view ( width, height ) graph actions =
     svg [ Svg.Attributes.width <| String.fromFloat width, Svg.Attributes.height <| String.fromFloat height ] <|
         List.concat
             [ viewLinks metadata.links
-            , viewNode metadata graph
+            , viewNode metadata graph actions
             , controls actions
             ]
 
@@ -59,8 +102,8 @@ controls actions =
     ]
 
 
-viewNode : DisplayGraph -> Node -> List (Svg msg)
-viewNode metadata node =
+viewNode : DisplayGraph -> Node -> Actions msg -> List (Svg msg)
+viewNode metadata node actions =
     let
         renderNode : Position -> Size -> Svg msg
         renderNode position size =
@@ -70,7 +113,7 @@ viewNode metadata node =
                 , width <| String.fromFloat size.width
                 , height <| String.fromFloat size.height
                 ]
-                [ Node.view node ]
+                [ Node.view node actions ]
 
         render : UUID -> Maybe String -> Maybe String -> List (Svg msg)
         render id maybeError maybeValue =
@@ -109,28 +152,49 @@ viewNode metadata node =
                         maybeError
                         |> Maybe.withDefault (text "")
                     ]
+
+        viewAddOutput : UUID -> Int -> Int -> (UUID -> Node) -> List (Svg msg)
+        viewAddOutput id placement count nodeConstructor =
+            case IdDict.get id metadata.nodes of
+                Nothing ->
+                    []
+
+                Just ( position, size ) ->
+                    [ circle
+                        [ cx <| String.fromFloat <| position.x + size.width
+                        , cy <| String.fromFloat <| position.y + (size.height / (toFloat count + 1)) * toFloat placement + 2.5
+                        , r "5"
+                        , class "cursor-pointer"
+                        , Svg.Events.onClick (actions.add id nodeConstructor)
+                        ]
+                        []
+                    ]
     in
     case node of
+        NumberNode (NumberGhost { id, state }) ->
+            render id (error state) (result String.fromFloat state)
+
         NumberNode (NumberConstant { id, state } _) ->
             render id (error state) (result String.fromFloat state)
 
         NumberNode (NumberAddition { id, state } (Just left) (Just right)) ->
             List.concat
                 [ render id (error state) (result String.fromFloat state)
-                , viewNode metadata (NumberNode left)
-                , viewNode metadata (NumberNode right)
+                , viewNode metadata (NumberNode left) actions
+                , viewNode metadata (NumberNode right) actions
                 ]
 
-        NumberNode (NumberAddition { id, state } (Just left) Nothing) ->
+        NumberNode (NumberAddition nodeMetadata (Just left) Nothing) ->
             List.concat
-                [ render id (error state) (result String.fromFloat state)
-                , viewNode metadata (NumberNode left)
+                [ render nodeMetadata.id (error nodeMetadata.state) (result String.fromFloat nodeMetadata.state)
+                , viewNode metadata (NumberNode left) actions
+                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberAddition nodeMetadata (Just left) (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
                 ]
 
         NumberNode (NumberAddition { id, state } Nothing (Just right)) ->
             List.concat
                 [ render id (error state) (result String.fromFloat state)
-                , viewNode metadata (NumberNode right)
+                , viewNode metadata (NumberNode right) actions
                 ]
 
         NumberNode (NumberAddition { id, state } Nothing Nothing) ->
@@ -214,6 +278,9 @@ buildMetadata ( width, height ) graph =
                     }
             in
             case node of
+                NumberNode (NumberGhost _) ->
+                    updatedMetadata
+
                 NumberNode (NumberConstant _ _) ->
                     updatedMetadata
 
@@ -252,6 +319,9 @@ buildMetadata ( width, height ) graph =
                             }
             in
             case node of
+                NumberNode (NumberGhost { id }) ->
+                    updateMetadata id
+
                 NumberNode (NumberConstant { id } _) ->
                     updateMetadata id
 
@@ -301,6 +371,11 @@ buildMetadata ( width, height ) graph =
                     }
             in
             case node of
+                NumberNode (NumberGhost { id }) ->
+                    ( { display | nodes = IdDict.insert id newNode display.nodes }
+                    , updatedMetadata
+                    )
+
                 NumberNode (NumberConstant { id } _) ->
                     ( { display | nodes = IdDict.insert id newNode display.nodes }
                     , updatedMetadata
@@ -371,6 +446,9 @@ buildMetadata ( width, height ) graph =
                         |> Maybe.withDefault links
             in
             case node of
+                NumberNode (NumberGhost { id }) ->
+                    { metadata | links = link id metadata.links }
+
                 NumberNode (NumberConstant { id } _) ->
                     { metadata | links = link id metadata.links }
 

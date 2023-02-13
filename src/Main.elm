@@ -8,7 +8,7 @@ import Html exposing (Html)
 import Interpreter exposing (interpret)
 import Node exposing (Node(..), NumberNode(..), State(..))
 import Random
-import UUID
+import UUID exposing (UUID)
 
 
 main : Program Flags Model Msg
@@ -110,6 +110,9 @@ init flags =
 
 type Msg
     = Run
+    | Add UUID (UUID -> Node)
+    | IdGenerated UUID (UUID -> Node) UUID
+    | Replace UUID Node
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -127,12 +130,31 @@ update msg model =
             , Cmd.none
             )
 
+        Add parentId nodeConstructor ->
+            ( model, Random.generate (IdGenerated parentId nodeConstructor) UUID.generator )
+
+        IdGenerated parentId nodeConstructor id ->
+            ( { model
+                | graph = Graph.replace parentId (nodeConstructor id) model.graph
+              }
+            , Cmd.none
+            )
+
+        Replace id node ->
+            ( { model
+                | graph = Graph.replace id node model.graph
+              }
+            , Cmd.none
+            )
+
 
 view : Model -> Html Msg
 view model =
     Graph.view model.size
         model.graph
         { run = Run
+        , add = Add
+        , replace = Replace
         }
 
 

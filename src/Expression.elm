@@ -23,6 +23,9 @@ fromNode node =
 fromNumberNode : NumberNode -> Result Errors NumberExpression
 fromNumberNode node =
     case node of
+        Node.NumberGhost { id } ->
+            Err <| Errors.singleton id "This node hasn't been set up"
+
         Node.NumberConstant _ (Just constant) ->
             Ok (NumberConstant constant)
 
