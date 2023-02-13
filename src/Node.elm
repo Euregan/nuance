@@ -138,8 +138,13 @@ numberView node actions =
                         ]
                     ]
 
-            NumberConstant _ constant ->
-                input [ type_ "number", value <| Maybe.withDefault "" <| Maybe.map String.fromFloat constant ] []
+            NumberConstant metadata constant ->
+                input
+                    [ type_ "number"
+                    , value <| Maybe.withDefault "" <| Maybe.map String.fromFloat constant
+                    , onInput (\value -> actions.replace metadata.id <| (NumberNode <| NumberConstant metadata <| String.toFloat value))
+                    ]
+                    []
 
             NumberAddition _ _ _ ->
                 text "Addition"
