@@ -5,7 +5,7 @@ import Graph.Links as Links exposing (Link, Links, Position)
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import IdDict exposing (IdDict)
-import Node exposing (Actions, Node(..), NumberNode(..), State(..), error, result)
+import Node exposing (Actions, Node(..), NumberNode(..), State(..), error, resultAsString)
 import Svg exposing (Svg, circle, foreignObject, path, svg, text_)
 import Svg.Attributes exposing (class, cx, cy, d, dominantBaseline, fill, height, r, stroke, strokeWidth, textAnchor, width, x, y)
 import Svg.Events
@@ -35,7 +35,7 @@ replace : UUID -> Node -> Graph -> Graph
 replace id node graph =
     case graph of
         NumberNode numberNode ->
-            NumberNode <| replaceNumber id node numberNode
+            Node.validate <| NumberNode <| replaceNumber id node numberNode
 
 
 replaceNumber : UUID -> Node -> NumberNode -> NumberNode
@@ -69,13 +69,13 @@ replaceNumber id node currentNode =
             in
             case currentNode of
                 NumberGhost metadata ->
-                    replaceNode metadata.id
+                    Node.validateNumber <| replaceNode metadata.id
 
                 NumberConstant metadata _ ->
-                    replaceNode metadata.id
+                    Node.validateNumber <| replaceNode metadata.id
 
                 NumberAddition metadata _ _ ->
-                    replaceNode metadata.id
+                    Node.validateNumber <| replaceNode metadata.id
 
 
 view : ( Float, Float ) -> Graph -> Actions msg -> Html msg
@@ -172,33 +172,33 @@ viewNode metadata node actions =
     in
     case node of
         NumberNode (NumberGhost { id, state }) ->
-            render id (error state) (result String.fromFloat state)
+            render id (error state) (resultAsString String.fromFloat state)
 
         NumberNode (NumberConstant { id, state } _) ->
-            render id (error state) (result String.fromFloat state)
+            render id (error state) (resultAsString String.fromFloat state)
 
         NumberNode (NumberAddition { id, state } (Just left) (Just right)) ->
             List.concat
-                [ render id (error state) (result String.fromFloat state)
+                [ render id (error state) (resultAsString String.fromFloat state)
                 , viewNode metadata (NumberNode left) actions
                 , viewNode metadata (NumberNode right) actions
                 ]
 
         NumberNode (NumberAddition nodeMetadata (Just left) Nothing) ->
             List.concat
-                [ render nodeMetadata.id (error nodeMetadata.state) (result String.fromFloat nodeMetadata.state)
+                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
                 , viewNode metadata (NumberNode left) actions
                 , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberAddition nodeMetadata (Just left) (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
                 ]
 
         NumberNode (NumberAddition { id, state } Nothing (Just right)) ->
             List.concat
-                [ render id (error state) (result String.fromFloat state)
+                [ render id (error state) (resultAsString String.fromFloat state)
                 , viewNode metadata (NumberNode right) actions
                 ]
 
         NumberNode (NumberAddition { id, state } Nothing Nothing) ->
-            render id (error state) (result String.fromFloat state)
+            render id (error state) (resultAsString String.fromFloat state)
 
 
 viewLinks : Links -> List (Svg msg)

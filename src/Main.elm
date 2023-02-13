@@ -38,66 +38,75 @@ init : Flags -> ( Model, Cmd Msg )
 init flags =
     let
         graph =
-            NumberNode
-                (NumberAddition
-                    { id = Random.step UUID.generator (Random.initialSeed 7) |> Tuple.first
-                    , state = ErrorFurtherDown
-                    }
-                    (Just
-                        (NumberAddition
-                            { id = Random.step UUID.generator (Random.initialSeed 1) |> Tuple.first
-                            , state = Result 8
+            Node.validate <|
+                NumberNode
+                    (Node.validateNumber <|
+                        NumberAddition
+                            { id = Random.step UUID.generator (Random.initialSeed 7) |> Tuple.first
+                            , state = ErrorFurtherDown
                             }
                             (Just
-                                (NumberConstant
-                                    { id = Random.step UUID.generator (Random.initialSeed 2) |> Tuple.first
-                                    , state = Result 1
-                                    }
-                                    (Just 1)
+                                (Node.validateNumber <|
+                                    NumberAddition
+                                        { id = Random.step UUID.generator (Random.initialSeed 1) |> Tuple.first
+                                        , state = Pending
+                                        }
+                                        (Just
+                                            (Node.validateNumber <|
+                                                NumberConstant
+                                                    { id = Random.step UUID.generator (Random.initialSeed 2) |> Tuple.first
+                                                    , state = Pending
+                                                    }
+                                                    (Just 1)
+                                            )
+                                        )
+                                        (Just
+                                            (Node.validateNumber <|
+                                                NumberAddition
+                                                    { id = Random.step UUID.generator (Random.initialSeed 534) |> Tuple.first
+                                                    , state = Pending
+                                                    }
+                                                    (Just
+                                                        (Node.validateNumber <|
+                                                            NumberConstant
+                                                                { id = Random.step UUID.generator (Random.initialSeed 89) |> Tuple.first
+                                                                , state = Pending
+                                                                }
+                                                                (Just 3)
+                                                        )
+                                                    )
+                                                    (Just
+                                                        (Node.validateNumber <|
+                                                            NumberConstant
+                                                                { id = Random.step UUID.generator (Random.initialSeed 23) |> Tuple.first
+                                                                , state = Pending
+                                                                }
+                                                                (Just 4)
+                                                        )
+                                                    )
+                                            )
+                                        )
                                 )
                             )
                             (Just
-                                (NumberAddition
-                                    { id = Random.step UUID.generator (Random.initialSeed 534) |> Tuple.first
-                                    , state = Result 7
-                                    }
-                                    (Just
-                                        (NumberConstant
-                                            { id = Random.step UUID.generator (Random.initialSeed 89) |> Tuple.first
-                                            , state = Result 3
-                                            }
-                                            (Just 3)
+                                (Node.validateNumber <|
+                                    NumberAddition
+                                        { id = Random.step UUID.generator (Random.initialSeed 4) |> Tuple.first
+                                        , state = Pending
+                                        }
+                                        (Just
+                                            (Node.validateNumber <|
+                                                NumberConstant
+                                                    { id = Random.step UUID.generator (Random.initialSeed 5) |> Tuple.first
+                                                    , state = Pending
+                                                    }
+                                                    (Just 3)
+                                            )
                                         )
-                                    )
-                                    (Just
-                                        (NumberConstant
-                                            { id = Random.step UUID.generator (Random.initialSeed 23) |> Tuple.first
-                                            , state = Result 4
-                                            }
-                                            (Just 4)
-                                        )
-                                    )
+                                        Nothing
                                 )
                             )
-                        )
                     )
-                    (Just
-                        (NumberAddition
-                            { id = Random.step UUID.generator (Random.initialSeed 4) |> Tuple.first
-                            , state = Error "Missing a value"
-                            }
-                            (Just
-                                (NumberConstant
-                                    { id = Random.step UUID.generator (Random.initialSeed 5) |> Tuple.first
-                                    , state = Result 3
-                                    }
-                                    (Just 3)
-                                )
-                            )
-                            Nothing
-                        )
-                    )
-                )
     in
     ( { size = flags.size
       , lastCompilation = Expression.fromNode graph

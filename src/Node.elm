@@ -17,6 +17,7 @@ type State a
     = Error String
     | Result a
     | ErrorFurtherDown
+    | Pending
 
 
 type alias Metadata a =
@@ -47,18 +48,42 @@ error state =
         ErrorFurtherDown ->
             Nothing
 
+        Pending ->
+            Nothing
 
-result : (a -> String) -> State a -> Maybe String
-result toString state =
+
+resultAsString : (a -> String) -> State a -> Maybe String
+resultAsString toString state =
+    Maybe.map toString <| result state
+
+
+result : State a -> Maybe a
+result state =
     case state of
         Error _ ->
             Nothing
 
         Result value ->
-            Just <| toString value
+            Just value
 
         ErrorFurtherDown ->
             Nothing
+
+        Pending ->
+            Nothing
+
+
+numberNodeResult : NumberNode -> Maybe Float
+numberNodeResult node =
+    case node of
+        NumberGhost _ ->
+            Nothing
+
+        NumberConstant { state } _ ->
+            result state
+
+        NumberAddition { state } _ _ ->
+            result state
 
 
 lines : Int -> Float
@@ -98,13 +123,13 @@ numberView node actions =
                             (\value ->
                                 case value of
                                     "constant" ->
-                                        actions.replace metadata.id (NumberNode (NumberConstant { id = metadata.id, state = Error "Missing a value" } Nothing))
+                                        actions.replace metadata.id <| validate <| NumberNode (NumberConstant { id = metadata.id, state = Pending } Nothing)
 
                                     "addition" ->
-                                        actions.replace metadata.id (NumberNode (NumberAddition { id = metadata.id, state = Error "Missing values" } Nothing Nothing))
+                                        actions.replace metadata.id <| validate <| NumberNode (NumberAddition { id = metadata.id, state = Pending } Nothing Nothing)
 
                                     _ ->
-                                        actions.replace metadata.id (NumberNode node)
+                                        actions.replace metadata.id <| validate <| NumberNode node
                             )
                         ]
                         [ option [ disabled True, selected True ] [ text "Pick a node" ]
@@ -137,14 +162,57 @@ numberDepth node =
         NumberConstant _ _ ->
             1
 
-        NumberAddition _ (Just inputA) (Just inputB) ->
-            1 + max (numberDepth inputA) (numberDepth inputB)
+        NumberAddition _ (Just left) (Just right) ->
+            1 + max (numberDepth left) (numberDepth right)
 
-        NumberAddition _ (Just inputA) Nothing ->
-            1 + numberDepth inputA
+        NumberAddition _ (Just left) Nothing ->
+            1 + numberDepth left
 
-        NumberAddition _ Nothing (Just inputB) ->
-            1 + numberDepth inputB
+        NumberAddition _ Nothing (Just right) ->
+            1 + numberDepth right
 
         NumberAddition _ Nothing Nothing ->
             1
+
+
+validate : Node -> Node
+validate node =
+    case node of
+        NumberNode numberNode ->
+            NumberNode <| validateNumber numberNode
+
+
+validateNumber : NumberNode -> NumberNode
+validateNumber node =
+    case node of
+        NumberGhost _ ->
+            node
+
+        NumberConstant metadata (Just constant) ->
+            NumberConstant { metadata | state = Result constant } (Just constant)
+
+        NumberConstant metadata Nothing ->
+            NumberConstant { metadata | state = Error "Missing the value" } Nothing
+
+        NumberAddition metadata (Just left) (Just right) ->
+            NumberAddition
+                { metadata
+                    | state =
+                        case Maybe.map2 (\leftResult rightResult -> leftResult + rightResult) (numberNodeResult left) (numberNodeResult right) of
+                            Just number ->
+                                Result number
+
+                            Nothing ->
+                                ErrorFurtherDown
+                }
+                (Just left)
+                (Just right)
+
+        NumberAddition metadata (Just left) Nothing ->
+            NumberAddition { metadata | state = Error "Missing a value" } (Just left) Nothing
+
+        NumberAddition metadata Nothing (Just right) ->
+            NumberAddition { metadata | state = Error "Missing a value" } Nothing (Just right)
+
+        NumberAddition metadata Nothing Nothing ->
+            NumberAddition { metadata | state = Error "Missing both values" } Nothing Nothing
