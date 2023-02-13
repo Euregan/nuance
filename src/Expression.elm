@@ -11,6 +11,7 @@ type Expression
 type NumberExpression
     = NumberConstant Float
     | NumberAddition NumberExpression NumberExpression
+    | NumberMultiplication NumberExpression NumberExpression
 
 
 fromNode : Node -> Result Errors Expression
@@ -72,3 +73,44 @@ fromNumberNode node =
 
         Node.NumberAddition { id } Nothing Nothing ->
             Err <| Errors.singleton id "This addition needs to have two values"
+
+        Node.NumberMultiplication _ (Just left) (Just right) ->
+            case ( fromNumberNode left, fromNumberNode right ) of
+                ( Ok leftExpression, Ok rightExpression ) ->
+                    Ok <| NumberMultiplication leftExpression rightExpression
+
+                ( Err leftErrors, Err rightErrors ) ->
+                    Err <| Errors.union leftErrors rightErrors
+
+                ( Err leftErrors, Ok _ ) ->
+                    Err leftErrors
+
+                ( Ok _, Err rightErrors ) ->
+                    Err rightErrors
+
+        Node.NumberMultiplication { id } (Just left) Nothing ->
+            Err <|
+                Errors.union
+                    (Errors.singleton id "This multiplication needs to have two values")
+                    (case fromNumberNode left of
+                        Ok _ ->
+                            Errors.empty
+
+                        Err errors ->
+                            errors
+                    )
+
+        Node.NumberMultiplication { id } Nothing (Just right) ->
+            Err <|
+                Errors.union
+                    (Errors.singleton id "This multiplication needs to have two values")
+                    (case fromNumberNode right of
+                        Ok _ ->
+                            Errors.empty
+
+                        Err errors ->
+                            errors
+                    )
+
+        Node.NumberMultiplication { id } Nothing Nothing ->
+            Err <| Errors.singleton id "This multiplication needs to have two values"

@@ -66,6 +66,18 @@ replaceNumber id node currentNode =
 
                             NumberAddition _ Nothing Nothing ->
                                 currentNode
+
+                            NumberMultiplication metadata (Just left) (Just right) ->
+                                NumberMultiplication metadata (Just (replaceNumber id node left)) (Just (replaceNumber id node right))
+
+                            NumberMultiplication metadata (Just left) Nothing ->
+                                NumberMultiplication metadata (Just (replaceNumber id node left)) Nothing
+
+                            NumberMultiplication metadata Nothing (Just right) ->
+                                NumberMultiplication metadata Nothing (Just (replaceNumber id node right))
+
+                            NumberMultiplication _ Nothing Nothing ->
+                                currentNode
             in
             case currentNode of
                 NumberGhost metadata ->
@@ -75,6 +87,9 @@ replaceNumber id node currentNode =
                     Node.validateNumber <| replaceNode metadata.id
 
                 NumberAddition metadata _ _ ->
+                    Node.validateNumber <| replaceNode metadata.id
+
+                NumberMultiplication metadata _ _ ->
                     Node.validateNumber <| replaceNode metadata.id
 
 
@@ -205,6 +220,34 @@ viewNode metadata node actions =
                 , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberAddition nodeMetadata Nothing (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
                 ]
 
+        NumberNode (NumberMultiplication { id, state } (Just left) (Just right)) ->
+            List.concat
+                [ render id (error state) (resultAsString String.fromFloat state)
+                , viewNode metadata (NumberNode left) actions
+                , viewNode metadata (NumberNode right) actions
+                ]
+
+        NumberNode (NumberMultiplication nodeMetadata (Just left) Nothing) ->
+            List.concat
+                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
+                , viewNode metadata (NumberNode left) actions
+                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberMultiplication nodeMetadata (Just left) (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
+                ]
+
+        NumberNode (NumberMultiplication nodeMetadata Nothing (Just right)) ->
+            List.concat
+                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
+                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberMultiplication nodeMetadata (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) (Just right)))
+                , viewNode metadata (NumberNode right) actions
+                ]
+
+        NumberNode (NumberMultiplication nodeMetadata Nothing Nothing) ->
+            List.concat
+                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
+                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberMultiplication nodeMetadata (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) Nothing))
+                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberMultiplication nodeMetadata Nothing (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
+                ]
+
 
 viewLinks : Links -> List (Svg msg)
 viewLinks =
@@ -303,6 +346,20 @@ buildMetadata ( width, height ) graph =
                 NumberNode (NumberAddition _ Nothing Nothing) ->
                     updatedMetadata
 
+                NumberNode (NumberMultiplication _ (Just nodeA) (Just nodeB)) ->
+                    updatedMetadata
+                        |> buildNodesMetadata (NumberNode nodeA) (depth + 1)
+                        |> buildNodesMetadata (NumberNode nodeB) (depth + 1)
+
+                NumberNode (NumberMultiplication _ (Just nodeA) Nothing) ->
+                    buildNodesMetadata (NumberNode nodeA) (depth + 1) updatedMetadata
+
+                NumberNode (NumberMultiplication _ Nothing (Just nodeB)) ->
+                    buildNodesMetadata (NumberNode nodeB) (depth + 1) updatedMetadata
+
+                NumberNode (NumberMultiplication _ Nothing Nothing) ->
+                    updatedMetadata
+
         buildLinksMetadata : Maybe ( UUID, Position ) -> Node -> Int -> Metadata -> Metadata
         buildLinksMetadata maybeParentOutput node depth metadata =
             let
@@ -344,6 +401,22 @@ buildMetadata ( width, height ) graph =
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
 
                 NumberNode (NumberAddition { id } Nothing Nothing) ->
+                    updateMetadata id
+
+                NumberNode (NumberMultiplication { id } (Just left) (Just right)) ->
+                    updateMetadata id
+                        |> buildLinksMetadata (Just ( id, position )) (NumberNode left) (depth + 1)
+                        |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
+
+                NumberNode (NumberMultiplication { id } (Just left) Nothing) ->
+                    updateMetadata id
+                        |> buildLinksMetadata (Just ( id, position )) (NumberNode left) (depth + 1)
+
+                NumberNode (NumberMultiplication { id } Nothing (Just right)) ->
+                    updateMetadata id
+                        |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
+
+                NumberNode (NumberMultiplication { id } Nothing Nothing) ->
                     updateMetadata id
 
         toDisplayGraph : Node -> Int -> Metadata -> DisplayGraph -> ( DisplayGraph, Metadata )
@@ -421,6 +494,41 @@ buildMetadata ( width, height ) graph =
                     , updatedMetadata
                     )
 
+                NumberNode (NumberMultiplication { id } (Just left) (Just right)) ->
+                    let
+                        ( leftDisplay, leftMetadata ) =
+                            toDisplayGraph (NumberNode left) (depth + 1) updatedMetadata display
+
+                        ( rightDisplay, rightMetadata ) =
+                            toDisplayGraph (NumberNode right) (depth + 1) leftMetadata leftDisplay
+                    in
+                    ( { rightDisplay | nodes = IdDict.insert id newNode rightDisplay.nodes }
+                    , rightMetadata
+                    )
+
+                NumberNode (NumberMultiplication { id } (Just left) Nothing) ->
+                    let
+                        ( leftDisplay, leftMetadata ) =
+                            toDisplayGraph (NumberNode left) (depth + 1) updatedMetadata display
+                    in
+                    ( { leftDisplay | nodes = IdDict.insert id newNode leftDisplay.nodes }
+                    , leftMetadata
+                    )
+
+                NumberNode (NumberMultiplication { id } Nothing (Just right)) ->
+                    let
+                        ( rightDisplay, rightMetadata ) =
+                            toDisplayGraph (NumberNode right) (depth + 1) updatedMetadata display
+                    in
+                    ( { rightDisplay | nodes = IdDict.insert id newNode rightDisplay.nodes }
+                    , rightMetadata
+                    )
+
+                NumberNode (NumberMultiplication { id } Nothing Nothing) ->
+                    ( { display | nodes = IdDict.insert id newNode display.nodes }
+                    , updatedMetadata
+                    )
+
         updateLinks : Maybe ( UUID, Position ) -> Node -> DisplayGraph -> DisplayGraph
         updateLinks maybeParent node metadata =
             let
@@ -482,6 +590,33 @@ buildMetadata ( width, height ) graph =
                     { rightMetadata | links = link id rightMetadata.links }
 
                 NumberNode (NumberAddition { id } Nothing Nothing) ->
+                    { metadata | links = link id metadata.links }
+
+                NumberNode (NumberMultiplication { id } (Just left) (Just right)) ->
+                    let
+                        leftMetadata =
+                            updateLinks (output id 2 1) (NumberNode left) metadata
+
+                        rightMetadata =
+                            updateLinks (output id 2 2) (NumberNode right) leftMetadata
+                    in
+                    { rightMetadata | links = link id rightMetadata.links }
+
+                NumberNode (NumberMultiplication { id } (Just left) Nothing) ->
+                    let
+                        leftMetadata =
+                            updateLinks (output id 2 1) (NumberNode left) metadata
+                    in
+                    { leftMetadata | links = link id leftMetadata.links }
+
+                NumberNode (NumberMultiplication { id } Nothing (Just right)) ->
+                    let
+                        rightMetadata =
+                            updateLinks (output id 2 2) (NumberNode right) metadata
+                    in
+                    { rightMetadata | links = link id rightMetadata.links }
+
+                NumberNode (NumberMultiplication { id } Nothing Nothing) ->
                     { metadata | links = link id metadata.links }
     in
     buildNodesMetadata graph 0 { nodes = Array.empty, size = { width = width, height = height }, links = Links.empty }

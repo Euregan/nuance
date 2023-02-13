@@ -22,3 +22,6 @@ interpretNumber expression =
 
         NumberAddition left right ->
             interpretNumber left + interpretNumber right
+
+        NumberMultiplication left right ->
+            interpretNumber left * interpretNumber right

@@ -34,6 +34,7 @@ type NumberNode
     = NumberGhost (Metadata Float)
     | NumberConstant (Metadata Float) (Maybe Float)
     | NumberAddition (Metadata Float) (Maybe NumberNode) (Maybe NumberNode)
+    | NumberMultiplication (Metadata Float) (Maybe NumberNode) (Maybe NumberNode)
 
 
 error : State a -> Maybe String
@@ -85,6 +86,9 @@ numberNodeResult node =
         NumberAddition { state } _ _ ->
             result state
 
+        NumberMultiplication { state } _ _ ->
+            result state
+
 
 lines : Int -> Float
 lines count =
@@ -101,6 +105,9 @@ height node =
             lines 1
 
         NumberNode (NumberAddition _ _ _) ->
+            lines 2
+
+        NumberNode (NumberMultiplication _ _ _) ->
             lines 2
 
 
@@ -128,6 +135,9 @@ numberView node actions =
                                     "addition" ->
                                         actions.replace metadata.id <| validate <| NumberNode (NumberAddition { id = metadata.id, state = Pending } Nothing Nothing)
 
+                                    "multiplication" ->
+                                        actions.replace metadata.id <| validate <| NumberNode (NumberMultiplication { id = metadata.id, state = Pending } Nothing Nothing)
+
                                     _ ->
                                         actions.replace metadata.id <| validate <| NumberNode node
                             )
@@ -135,6 +145,7 @@ numberView node actions =
                         [ option [ disabled True, selected True ] [ text "Pick a node" ]
                         , option [ value "constant" ] [ text "Constant" ]
                         , option [ value "addition" ] [ text "Addition" ]
+                        , option [ value "multiplication" ] [ text "Multiplication" ]
                         ]
                     ]
 
@@ -148,6 +159,9 @@ numberView node actions =
 
             NumberAddition _ _ _ ->
                 text "Addition"
+
+            NumberMultiplication _ _ _ ->
+                text "Multiplication"
         ]
 
 
@@ -177,6 +191,18 @@ numberDepth node =
             1 + numberDepth right
 
         NumberAddition _ Nothing Nothing ->
+            1
+
+        NumberMultiplication _ (Just left) (Just right) ->
+            1 + max (numberDepth left) (numberDepth right)
+
+        NumberMultiplication _ (Just left) Nothing ->
+            1 + numberDepth left
+
+        NumberMultiplication _ Nothing (Just right) ->
+            1 + numberDepth right
+
+        NumberMultiplication _ Nothing Nothing ->
             1
 
 
@@ -221,3 +247,26 @@ validateNumber node =
 
         NumberAddition metadata Nothing Nothing ->
             NumberAddition { metadata | state = Error "Missing both values" } Nothing Nothing
+
+        NumberMultiplication metadata (Just left) (Just right) ->
+            NumberMultiplication
+                { metadata
+                    | state =
+                        case Maybe.map2 (\leftResult rightResult -> leftResult * rightResult) (numberNodeResult left) (numberNodeResult right) of
+                            Just number ->
+                                Result number
+
+                            Nothing ->
+                                ErrorFurtherDown
+                }
+                (Just left)
+                (Just right)
+
+        NumberMultiplication metadata (Just left) Nothing ->
+            NumberMultiplication { metadata | state = Error "Missing a value" } (Just left) Nothing
+
+        NumberMultiplication metadata Nothing (Just right) ->
+            NumberMultiplication { metadata | state = Error "Missing a value" } Nothing (Just right)
+
+        NumberMultiplication metadata Nothing Nothing ->
+            NumberMultiplication { metadata | state = Error "Missing both values" } Nothing Nothing
