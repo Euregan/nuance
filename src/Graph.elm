@@ -191,14 +191,19 @@ viewNode metadata node actions =
                 , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberAddition nodeMetadata (Just left) (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
                 ]
 
-        NumberNode (NumberAddition { id, state } Nothing (Just right)) ->
+        NumberNode (NumberAddition nodeMetadata Nothing (Just right)) ->
             List.concat
-                [ render id (error state) (resultAsString String.fromFloat state)
+                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
+                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberAddition nodeMetadata (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) (Just right)))
                 , viewNode metadata (NumberNode right) actions
                 ]
 
-        NumberNode (NumberAddition { id, state } Nothing Nothing) ->
-            render id (error state) (resultAsString String.fromFloat state)
+        NumberNode (NumberAddition nodeMetadata Nothing Nothing) ->
+            List.concat
+                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
+                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberAddition nodeMetadata (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) Nothing))
+                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberAddition nodeMetadata Nothing (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
+                ]
 
 
 viewLinks : Links -> List (Svg msg)
