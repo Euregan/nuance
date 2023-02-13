@@ -1,7 +1,7 @@
 module Node exposing (..)
 
 import Html exposing (Html, div, input, option, select, text)
-import Html.Attributes exposing (class, type_, value)
+import Html.Attributes exposing (class, disabled, selected, type_, value)
 import Html.Events exposing (onInput)
 import UUID exposing (UUID)
 
@@ -107,7 +107,8 @@ numberView node actions =
                                         actions.replace metadata.id (NumberNode node)
                             )
                         ]
-                        [ option [ value "constant" ] [ text "Constant" ]
+                        [ option [ disabled True, selected True ] [ text "Pick a node" ]
+                        , option [ value "constant" ] [ text "Constant" ]
                         , option [ value "addition" ] [ text "Addition" ]
                         ]
                     ]
