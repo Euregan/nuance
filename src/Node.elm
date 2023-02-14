@@ -39,6 +39,7 @@ type NumberNode
 type NumberBinary
     = NumberAddition
     | NumberMultiplication
+    | NumberSubtraction
 
 
 error : State a -> Maybe String
@@ -133,6 +134,9 @@ numberView node actions =
                                     "addition" ->
                                         actions.replace metadata.id <| validate <| NumberNode (NumberBinary { id = metadata.id, state = Pending } NumberAddition Nothing Nothing)
 
+                                    "subtraction" ->
+                                        actions.replace metadata.id <| validate <| NumberNode (NumberBinary { id = metadata.id, state = Pending } NumberSubtraction Nothing Nothing)
+
                                     "multiplication" ->
                                         actions.replace metadata.id <| validate <| NumberNode (NumberBinary { id = metadata.id, state = Pending } NumberMultiplication Nothing Nothing)
 
@@ -143,6 +147,7 @@ numberView node actions =
                         [ option [ disabled True, selected True ] [ text "Pick a node" ]
                         , option [ value "constant" ] [ text "Constant" ]
                         , option [ value "addition" ] [ text "Addition" ]
+                        , option [ value "subtraction" ] [ text "Subtraction" ]
                         , option [ value "multiplication" ] [ text "Multiplication" ]
                         ]
                     ]
@@ -160,6 +165,9 @@ numberView node actions =
 
             NumberBinary _ NumberMultiplication _ _ ->
                 text "Multiplication"
+
+            NumberBinary _ NumberSubtraction _ _ ->
+                text "Subtraction"
         ]
 
 
@@ -211,7 +219,7 @@ validateNumber node =
         NumberConstant metadata Nothing ->
             NumberConstant { metadata | state = Error "Missing the value" } Nothing
 
-        NumberBinary metadata kind (Just left) (Just right) ->
+        NumberBinary metadata NumberAddition (Just left) (Just right) ->
             NumberBinary
                 { metadata
                     | state =
@@ -222,7 +230,37 @@ validateNumber node =
                             Nothing ->
                                 ErrorFurtherDown
                 }
-                kind
+                NumberAddition
+                (Just left)
+                (Just right)
+
+        NumberBinary metadata NumberSubtraction (Just left) (Just right) ->
+            NumberBinary
+                { metadata
+                    | state =
+                        case Maybe.map2 (\leftResult rightResult -> leftResult - rightResult) (numberNodeResult left) (numberNodeResult right) of
+                            Just number ->
+                                Result number
+
+                            Nothing ->
+                                ErrorFurtherDown
+                }
+                NumberSubtraction
+                (Just left)
+                (Just right)
+
+        NumberBinary metadata NumberMultiplication (Just left) (Just right) ->
+            NumberBinary
+                { metadata
+                    | state =
+                        case Maybe.map2 (\leftResult rightResult -> leftResult * rightResult) (numberNodeResult left) (numberNodeResult right) of
+                            Just number ->
+                                Result number
+
+                            Nothing ->
+                                ErrorFurtherDown
+                }
+                NumberMultiplication
                 (Just left)
                 (Just right)
 

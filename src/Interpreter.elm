@@ -24,5 +24,8 @@ interpretNumber expression =
         NumberBinary Node.NumberAddition left right ->
             interpretNumber left + interpretNumber right
 
+        NumberBinary Node.NumberSubtraction left right ->
+            interpretNumber left - interpretNumber right
+
         NumberBinary Node.NumberMultiplication left right ->
             interpretNumber left * interpretNumber right
