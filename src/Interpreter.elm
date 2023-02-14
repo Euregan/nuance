@@ -29,3 +29,6 @@ interpretNumber expression =
 
         NumberBinary Node.NumberMultiplication left right ->
             interpretNumber left * interpretNumber right
+
+        NumberBinary Node.NumberDivision left right ->
+            interpretNumber left / interpretNumber right

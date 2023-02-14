@@ -38,8 +38,9 @@ type NumberNode
 
 type NumberBinary
     = NumberAddition
-    | NumberMultiplication
     | NumberSubtraction
+    | NumberMultiplication
+    | NumberDivision
 
 
 error : State a -> Maybe String
@@ -140,6 +141,9 @@ numberView node actions =
                                     "multiplication" ->
                                         actions.replace metadata.id <| validate <| NumberNode (NumberBinary { id = metadata.id, state = Pending } NumberMultiplication Nothing Nothing)
 
+                                    "division" ->
+                                        actions.replace metadata.id <| validate <| NumberNode (NumberBinary { id = metadata.id, state = Pending } NumberDivision Nothing Nothing)
+
                                     _ ->
                                         actions.replace metadata.id <| validate <| NumberNode node
                             )
@@ -149,6 +153,7 @@ numberView node actions =
                         , option [ value "addition" ] [ text "Addition" ]
                         , option [ value "subtraction" ] [ text "Subtraction" ]
                         , option [ value "multiplication" ] [ text "Multiplication" ]
+                        , option [ value "division" ] [ text "Division" ]
                         ]
                     ]
 
@@ -168,6 +173,9 @@ numberView node actions =
 
             NumberBinary _ NumberSubtraction _ _ ->
                 text "Subtraction"
+
+            NumberBinary _ NumberDivision _ _ ->
+                text "Division"
         ]
 
 
@@ -261,6 +269,21 @@ validateNumber node =
                                 ErrorFurtherDown
                 }
                 NumberMultiplication
+                (Just left)
+                (Just right)
+
+        NumberBinary metadata NumberDivision (Just left) (Just right) ->
+            NumberBinary
+                { metadata
+                    | state =
+                        case Maybe.map2 (\leftResult rightResult -> leftResult / rightResult) (numberNodeResult left) (numberNodeResult right) of
+                            Just number ->
+                                Result number
+
+                            Nothing ->
+                                ErrorFurtherDown
+                }
+                NumberDivision
                 (Just left)
                 (Just right)
 
