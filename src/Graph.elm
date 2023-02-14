@@ -55,28 +55,16 @@ replaceNumber id node currentNode =
                             NumberConstant _ _ ->
                                 currentNode
 
-                            NumberAddition metadata (Just left) (Just right) ->
-                                NumberAddition metadata (Just (replaceNumber id node left)) (Just (replaceNumber id node right))
+                            NumberBinary metadata kind (Just left) (Just right) ->
+                                NumberBinary metadata kind (Just (replaceNumber id node left)) (Just (replaceNumber id node right))
 
-                            NumberAddition metadata (Just left) Nothing ->
-                                NumberAddition metadata (Just (replaceNumber id node left)) Nothing
+                            NumberBinary metadata kind (Just left) Nothing ->
+                                NumberBinary metadata kind (Just (replaceNumber id node left)) Nothing
 
-                            NumberAddition metadata Nothing (Just right) ->
-                                NumberAddition metadata Nothing (Just (replaceNumber id node right))
+                            NumberBinary metadata kind Nothing (Just right) ->
+                                NumberBinary metadata kind Nothing (Just (replaceNumber id node right))
 
-                            NumberAddition _ Nothing Nothing ->
-                                currentNode
-
-                            NumberMultiplication metadata (Just left) (Just right) ->
-                                NumberMultiplication metadata (Just (replaceNumber id node left)) (Just (replaceNumber id node right))
-
-                            NumberMultiplication metadata (Just left) Nothing ->
-                                NumberMultiplication metadata (Just (replaceNumber id node left)) Nothing
-
-                            NumberMultiplication metadata Nothing (Just right) ->
-                                NumberMultiplication metadata Nothing (Just (replaceNumber id node right))
-
-                            NumberMultiplication _ Nothing Nothing ->
+                            NumberBinary _ _ Nothing Nothing ->
                                 currentNode
             in
             case currentNode of
@@ -86,10 +74,7 @@ replaceNumber id node currentNode =
                 NumberConstant metadata _ ->
                     Node.validateNumber <| replaceNode metadata.id
 
-                NumberAddition metadata _ _ ->
-                    Node.validateNumber <| replaceNode metadata.id
-
-                NumberMultiplication metadata _ _ ->
+                NumberBinary metadata _ _ _ ->
                     Node.validateNumber <| replaceNode metadata.id
 
 
@@ -192,60 +177,32 @@ viewNode metadata node actions =
         NumberNode (NumberConstant { id, state } _) ->
             render id (error state) (resultAsString String.fromFloat state)
 
-        NumberNode (NumberAddition { id, state } (Just left) (Just right)) ->
+        NumberNode (NumberBinary { id, state } _ (Just left) (Just right)) ->
             List.concat
                 [ render id (error state) (resultAsString String.fromFloat state)
                 , viewNode metadata (NumberNode left) actions
                 , viewNode metadata (NumberNode right) actions
                 ]
 
-        NumberNode (NumberAddition nodeMetadata (Just left) Nothing) ->
+        NumberNode (NumberBinary nodeMetadata kind (Just left) Nothing) ->
             List.concat
                 [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
                 , viewNode metadata (NumberNode left) actions
-                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberAddition nodeMetadata (Just left) (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
+                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberBinary nodeMetadata kind (Just left) (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
                 ]
 
-        NumberNode (NumberAddition nodeMetadata Nothing (Just right)) ->
+        NumberNode (NumberBinary nodeMetadata kind Nothing (Just right)) ->
             List.concat
                 [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
-                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberAddition nodeMetadata (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) (Just right)))
+                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberBinary nodeMetadata kind (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) (Just right)))
                 , viewNode metadata (NumberNode right) actions
                 ]
 
-        NumberNode (NumberAddition nodeMetadata Nothing Nothing) ->
+        NumberNode (NumberBinary nodeMetadata kind Nothing Nothing) ->
             List.concat
                 [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
-                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberAddition nodeMetadata (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) Nothing))
-                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberAddition nodeMetadata Nothing (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
-                ]
-
-        NumberNode (NumberMultiplication { id, state } (Just left) (Just right)) ->
-            List.concat
-                [ render id (error state) (resultAsString String.fromFloat state)
-                , viewNode metadata (NumberNode left) actions
-                , viewNode metadata (NumberNode right) actions
-                ]
-
-        NumberNode (NumberMultiplication nodeMetadata (Just left) Nothing) ->
-            List.concat
-                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
-                , viewNode metadata (NumberNode left) actions
-                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberMultiplication nodeMetadata (Just left) (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
-                ]
-
-        NumberNode (NumberMultiplication nodeMetadata Nothing (Just right)) ->
-            List.concat
-                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
-                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberMultiplication nodeMetadata (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) (Just right)))
-                , viewNode metadata (NumberNode right) actions
-                ]
-
-        NumberNode (NumberMultiplication nodeMetadata Nothing Nothing) ->
-            List.concat
-                [ render nodeMetadata.id (error nodeMetadata.state) (resultAsString String.fromFloat nodeMetadata.state)
-                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberMultiplication nodeMetadata (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) Nothing))
-                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberMultiplication nodeMetadata Nothing (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
+                , viewAddOutput nodeMetadata.id 1 2 (\id -> NumberNode (NumberBinary nodeMetadata kind (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" })) Nothing))
+                , viewAddOutput nodeMetadata.id 2 2 (\id -> NumberNode (NumberBinary nodeMetadata kind Nothing (Just (NumberGhost { id = id, state = Error "This node hasn't been set up" }))))
                 ]
 
 
@@ -332,32 +289,18 @@ buildMetadata ( width, height ) graph =
                 NumberNode (NumberConstant _ _) ->
                     updatedMetadata
 
-                NumberNode (NumberAddition _ (Just nodeA) (Just nodeB)) ->
+                NumberNode (NumberBinary _ _ (Just nodeA) (Just nodeB)) ->
                     updatedMetadata
                         |> buildNodesMetadata (NumberNode nodeA) (depth + 1)
                         |> buildNodesMetadata (NumberNode nodeB) (depth + 1)
 
-                NumberNode (NumberAddition _ (Just nodeA) Nothing) ->
+                NumberNode (NumberBinary _ _ (Just nodeA) Nothing) ->
                     buildNodesMetadata (NumberNode nodeA) (depth + 1) updatedMetadata
 
-                NumberNode (NumberAddition _ Nothing (Just nodeB)) ->
+                NumberNode (NumberBinary _ _ Nothing (Just nodeB)) ->
                     buildNodesMetadata (NumberNode nodeB) (depth + 1) updatedMetadata
 
-                NumberNode (NumberAddition _ Nothing Nothing) ->
-                    updatedMetadata
-
-                NumberNode (NumberMultiplication _ (Just nodeA) (Just nodeB)) ->
-                    updatedMetadata
-                        |> buildNodesMetadata (NumberNode nodeA) (depth + 1)
-                        |> buildNodesMetadata (NumberNode nodeB) (depth + 1)
-
-                NumberNode (NumberMultiplication _ (Just nodeA) Nothing) ->
-                    buildNodesMetadata (NumberNode nodeA) (depth + 1) updatedMetadata
-
-                NumberNode (NumberMultiplication _ Nothing (Just nodeB)) ->
-                    buildNodesMetadata (NumberNode nodeB) (depth + 1) updatedMetadata
-
-                NumberNode (NumberMultiplication _ Nothing Nothing) ->
+                NumberNode (NumberBinary _ _ Nothing Nothing) ->
                     updatedMetadata
 
         buildLinksMetadata : Maybe ( UUID, Position ) -> Node -> Int -> Metadata -> Metadata
@@ -387,36 +330,20 @@ buildMetadata ( width, height ) graph =
                 NumberNode (NumberConstant { id } _) ->
                     updateMetadata id
 
-                NumberNode (NumberAddition { id } (Just left) (Just right)) ->
+                NumberNode (NumberBinary { id } _ (Just left) (Just right)) ->
                     updateMetadata id
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode left) (depth + 1)
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
 
-                NumberNode (NumberAddition { id } (Just left) Nothing) ->
+                NumberNode (NumberBinary { id } _ (Just left) Nothing) ->
                     updateMetadata id
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode left) (depth + 1)
 
-                NumberNode (NumberAddition { id } Nothing (Just right)) ->
+                NumberNode (NumberBinary { id } _ Nothing (Just right)) ->
                     updateMetadata id
                         |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
 
-                NumberNode (NumberAddition { id } Nothing Nothing) ->
-                    updateMetadata id
-
-                NumberNode (NumberMultiplication { id } (Just left) (Just right)) ->
-                    updateMetadata id
-                        |> buildLinksMetadata (Just ( id, position )) (NumberNode left) (depth + 1)
-                        |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
-
-                NumberNode (NumberMultiplication { id } (Just left) Nothing) ->
-                    updateMetadata id
-                        |> buildLinksMetadata (Just ( id, position )) (NumberNode left) (depth + 1)
-
-                NumberNode (NumberMultiplication { id } Nothing (Just right)) ->
-                    updateMetadata id
-                        |> buildLinksMetadata (Just ( id, position )) (NumberNode right) (depth + 1)
-
-                NumberNode (NumberMultiplication { id } Nothing Nothing) ->
+                NumberNode (NumberBinary { id } _ Nothing Nothing) ->
                     updateMetadata id
 
         toDisplayGraph : Node -> Int -> Metadata -> DisplayGraph -> ( DisplayGraph, Metadata )
@@ -459,7 +386,7 @@ buildMetadata ( width, height ) graph =
                     , updatedMetadata
                     )
 
-                NumberNode (NumberAddition { id } (Just left) (Just right)) ->
+                NumberNode (NumberBinary { id } _ (Just left) (Just right)) ->
                     let
                         ( leftDisplay, leftMetadata ) =
                             toDisplayGraph (NumberNode left) (depth + 1) updatedMetadata display
@@ -471,7 +398,7 @@ buildMetadata ( width, height ) graph =
                     , rightMetadata
                     )
 
-                NumberNode (NumberAddition { id } (Just left) Nothing) ->
+                NumberNode (NumberBinary { id } _ (Just left) Nothing) ->
                     let
                         ( leftDisplay, leftMetadata ) =
                             toDisplayGraph (NumberNode left) (depth + 1) updatedMetadata display
@@ -480,7 +407,7 @@ buildMetadata ( width, height ) graph =
                     , leftMetadata
                     )
 
-                NumberNode (NumberAddition { id } Nothing (Just right)) ->
+                NumberNode (NumberBinary { id } _ Nothing (Just right)) ->
                     let
                         ( rightDisplay, rightMetadata ) =
                             toDisplayGraph (NumberNode right) (depth + 1) updatedMetadata display
@@ -489,42 +416,7 @@ buildMetadata ( width, height ) graph =
                     , rightMetadata
                     )
 
-                NumberNode (NumberAddition { id } Nothing Nothing) ->
-                    ( { display | nodes = IdDict.insert id newNode display.nodes }
-                    , updatedMetadata
-                    )
-
-                NumberNode (NumberMultiplication { id } (Just left) (Just right)) ->
-                    let
-                        ( leftDisplay, leftMetadata ) =
-                            toDisplayGraph (NumberNode left) (depth + 1) updatedMetadata display
-
-                        ( rightDisplay, rightMetadata ) =
-                            toDisplayGraph (NumberNode right) (depth + 1) leftMetadata leftDisplay
-                    in
-                    ( { rightDisplay | nodes = IdDict.insert id newNode rightDisplay.nodes }
-                    , rightMetadata
-                    )
-
-                NumberNode (NumberMultiplication { id } (Just left) Nothing) ->
-                    let
-                        ( leftDisplay, leftMetadata ) =
-                            toDisplayGraph (NumberNode left) (depth + 1) updatedMetadata display
-                    in
-                    ( { leftDisplay | nodes = IdDict.insert id newNode leftDisplay.nodes }
-                    , leftMetadata
-                    )
-
-                NumberNode (NumberMultiplication { id } Nothing (Just right)) ->
-                    let
-                        ( rightDisplay, rightMetadata ) =
-                            toDisplayGraph (NumberNode right) (depth + 1) updatedMetadata display
-                    in
-                    ( { rightDisplay | nodes = IdDict.insert id newNode rightDisplay.nodes }
-                    , rightMetadata
-                    )
-
-                NumberNode (NumberMultiplication { id } Nothing Nothing) ->
+                NumberNode (NumberBinary { id } _ Nothing Nothing) ->
                     ( { display | nodes = IdDict.insert id newNode display.nodes }
                     , updatedMetadata
                     )
@@ -565,7 +457,7 @@ buildMetadata ( width, height ) graph =
                 NumberNode (NumberConstant { id } _) ->
                     { metadata | links = link id metadata.links }
 
-                NumberNode (NumberAddition { id } (Just left) (Just right)) ->
+                NumberNode (NumberBinary { id } _ (Just left) (Just right)) ->
                     let
                         leftMetadata =
                             updateLinks (output id 2 1) (NumberNode left) metadata
@@ -575,48 +467,21 @@ buildMetadata ( width, height ) graph =
                     in
                     { rightMetadata | links = link id rightMetadata.links }
 
-                NumberNode (NumberAddition { id } (Just left) Nothing) ->
+                NumberNode (NumberBinary { id } _ (Just left) Nothing) ->
                     let
                         leftMetadata =
                             updateLinks (output id 2 1) (NumberNode left) metadata
                     in
                     { leftMetadata | links = link id leftMetadata.links }
 
-                NumberNode (NumberAddition { id } Nothing (Just right)) ->
+                NumberNode (NumberBinary { id } _ Nothing (Just right)) ->
                     let
                         rightMetadata =
                             updateLinks (output id 2 2) (NumberNode right) metadata
                     in
                     { rightMetadata | links = link id rightMetadata.links }
 
-                NumberNode (NumberAddition { id } Nothing Nothing) ->
-                    { metadata | links = link id metadata.links }
-
-                NumberNode (NumberMultiplication { id } (Just left) (Just right)) ->
-                    let
-                        leftMetadata =
-                            updateLinks (output id 2 1) (NumberNode left) metadata
-
-                        rightMetadata =
-                            updateLinks (output id 2 2) (NumberNode right) leftMetadata
-                    in
-                    { rightMetadata | links = link id rightMetadata.links }
-
-                NumberNode (NumberMultiplication { id } (Just left) Nothing) ->
-                    let
-                        leftMetadata =
-                            updateLinks (output id 2 1) (NumberNode left) metadata
-                    in
-                    { leftMetadata | links = link id leftMetadata.links }
-
-                NumberNode (NumberMultiplication { id } Nothing (Just right)) ->
-                    let
-                        rightMetadata =
-                            updateLinks (output id 2 2) (NumberNode right) metadata
-                    in
-                    { rightMetadata | links = link id rightMetadata.links }
-
-                NumberNode (NumberMultiplication { id } Nothing Nothing) ->
+                NumberNode (NumberBinary { id } _ Nothing Nothing) ->
                     { metadata | links = link id metadata.links }
     in
     buildNodesMetadata graph 0 { nodes = Array.empty, size = { width = width, height = height }, links = Links.empty }

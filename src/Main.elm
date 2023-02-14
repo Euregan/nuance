@@ -6,7 +6,7 @@ import Expression.Errors exposing (Errors)
 import Graph exposing (Graph)
 import Html exposing (Html)
 import Interpreter exposing (interpret)
-import Node exposing (Node(..), NumberNode(..), State(..))
+import Node exposing (Node(..), NumberBinary(..), NumberNode(..), State(..))
 import Random
 import UUID exposing (UUID)
 
@@ -41,16 +41,18 @@ init flags =
             Node.validate <|
                 NumberNode
                     (Node.validateNumber <|
-                        NumberAddition
+                        NumberBinary
                             { id = Random.step UUID.generator (Random.initialSeed 7) |> Tuple.first
                             , state = ErrorFurtherDown
                             }
+                            NumberAddition
                             (Just
                                 (Node.validateNumber <|
-                                    NumberAddition
+                                    NumberBinary
                                         { id = Random.step UUID.generator (Random.initialSeed 1) |> Tuple.first
                                         , state = Pending
                                         }
+                                        NumberAddition
                                         (Just
                                             (Node.validateNumber <|
                                                 NumberConstant
@@ -62,10 +64,11 @@ init flags =
                                         )
                                         (Just
                                             (Node.validateNumber <|
-                                                NumberAddition
+                                                NumberBinary
                                                     { id = Random.step UUID.generator (Random.initialSeed 534) |> Tuple.first
                                                     , state = Pending
                                                     }
+                                                    NumberAddition
                                                     (Just
                                                         (Node.validateNumber <|
                                                             NumberConstant
@@ -90,10 +93,11 @@ init flags =
                             )
                             (Just
                                 (Node.validateNumber <|
-                                    NumberAddition
+                                    NumberBinary
                                         { id = Random.step UUID.generator (Random.initialSeed 4) |> Tuple.first
                                         , state = Pending
                                         }
+                                        NumberAddition
                                         (Just
                                             (Node.validateNumber <|
                                                 NumberConstant

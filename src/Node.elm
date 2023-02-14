@@ -33,8 +33,12 @@ type Node
 type NumberNode
     = NumberGhost (Metadata Float)
     | NumberConstant (Metadata Float) (Maybe Float)
-    | NumberAddition (Metadata Float) (Maybe NumberNode) (Maybe NumberNode)
-    | NumberMultiplication (Metadata Float) (Maybe NumberNode) (Maybe NumberNode)
+    | NumberBinary (Metadata Float) NumberBinary (Maybe NumberNode) (Maybe NumberNode)
+
+
+type NumberBinary
+    = NumberAddition
+    | NumberMultiplication
 
 
 error : State a -> Maybe String
@@ -83,10 +87,7 @@ numberNodeResult node =
         NumberConstant { state } _ ->
             result state
 
-        NumberAddition { state } _ _ ->
-            result state
-
-        NumberMultiplication { state } _ _ ->
+        NumberBinary { state } _ _ _ ->
             result state
 
 
@@ -104,10 +105,7 @@ height node =
         NumberNode (NumberConstant _ _) ->
             lines 1
 
-        NumberNode (NumberAddition _ _ _) ->
-            lines 2
-
-        NumberNode (NumberMultiplication _ _ _) ->
+        NumberNode (NumberBinary _ _ _ _) ->
             lines 2
 
 
@@ -133,10 +131,10 @@ numberView node actions =
                                         actions.replace metadata.id <| validate <| NumberNode (NumberConstant { id = metadata.id, state = Pending } Nothing)
 
                                     "addition" ->
-                                        actions.replace metadata.id <| validate <| NumberNode (NumberAddition { id = metadata.id, state = Pending } Nothing Nothing)
+                                        actions.replace metadata.id <| validate <| NumberNode (NumberBinary { id = metadata.id, state = Pending } NumberAddition Nothing Nothing)
 
                                     "multiplication" ->
-                                        actions.replace metadata.id <| validate <| NumberNode (NumberMultiplication { id = metadata.id, state = Pending } Nothing Nothing)
+                                        actions.replace metadata.id <| validate <| NumberNode (NumberBinary { id = metadata.id, state = Pending } NumberMultiplication Nothing Nothing)
 
                                     _ ->
                                         actions.replace metadata.id <| validate <| NumberNode node
@@ -157,10 +155,10 @@ numberView node actions =
                     ]
                     []
 
-            NumberAddition _ _ _ ->
+            NumberBinary _ NumberAddition _ _ ->
                 text "Addition"
 
-            NumberMultiplication _ _ _ ->
+            NumberBinary _ NumberMultiplication _ _ ->
                 text "Multiplication"
         ]
 
@@ -181,28 +179,16 @@ numberDepth node =
         NumberConstant _ _ ->
             1
 
-        NumberAddition _ (Just left) (Just right) ->
+        NumberBinary _ _ (Just left) (Just right) ->
             1 + max (numberDepth left) (numberDepth right)
 
-        NumberAddition _ (Just left) Nothing ->
+        NumberBinary _ _ (Just left) Nothing ->
             1 + numberDepth left
 
-        NumberAddition _ Nothing (Just right) ->
+        NumberBinary _ _ Nothing (Just right) ->
             1 + numberDepth right
 
-        NumberAddition _ Nothing Nothing ->
-            1
-
-        NumberMultiplication _ (Just left) (Just right) ->
-            1 + max (numberDepth left) (numberDepth right)
-
-        NumberMultiplication _ (Just left) Nothing ->
-            1 + numberDepth left
-
-        NumberMultiplication _ Nothing (Just right) ->
-            1 + numberDepth right
-
-        NumberMultiplication _ Nothing Nothing ->
+        NumberBinary _ _ Nothing Nothing ->
             1
 
 
@@ -225,8 +211,8 @@ validateNumber node =
         NumberConstant metadata Nothing ->
             NumberConstant { metadata | state = Error "Missing the value" } Nothing
 
-        NumberAddition metadata (Just left) (Just right) ->
-            NumberAddition
+        NumberBinary metadata kind (Just left) (Just right) ->
+            NumberBinary
                 { metadata
                     | state =
                         case Maybe.map2 (\leftResult rightResult -> leftResult + rightResult) (numberNodeResult left) (numberNodeResult right) of
@@ -236,37 +222,15 @@ validateNumber node =
                             Nothing ->
                                 ErrorFurtherDown
                 }
+                kind
                 (Just left)
                 (Just right)
 
-        NumberAddition metadata (Just left) Nothing ->
-            NumberAddition { metadata | state = Error "Missing a value" } (Just left) Nothing
+        NumberBinary metadata kind (Just left) Nothing ->
+            NumberBinary { metadata | state = Error "Missing a value" } kind (Just left) Nothing
 
-        NumberAddition metadata Nothing (Just right) ->
-            NumberAddition { metadata | state = Error "Missing a value" } Nothing (Just right)
+        NumberBinary metadata kind Nothing (Just right) ->
+            NumberBinary { metadata | state = Error "Missing a value" } kind Nothing (Just right)
 
-        NumberAddition metadata Nothing Nothing ->
-            NumberAddition { metadata | state = Error "Missing both values" } Nothing Nothing
-
-        NumberMultiplication metadata (Just left) (Just right) ->
-            NumberMultiplication
-                { metadata
-                    | state =
-                        case Maybe.map2 (\leftResult rightResult -> leftResult * rightResult) (numberNodeResult left) (numberNodeResult right) of
-                            Just number ->
-                                Result number
-
-                            Nothing ->
-                                ErrorFurtherDown
-                }
-                (Just left)
-                (Just right)
-
-        NumberMultiplication metadata (Just left) Nothing ->
-            NumberMultiplication { metadata | state = Error "Missing a value" } (Just left) Nothing
-
-        NumberMultiplication metadata Nothing (Just right) ->
-            NumberMultiplication { metadata | state = Error "Missing a value" } Nothing (Just right)
-
-        NumberMultiplication metadata Nothing Nothing ->
-            NumberMultiplication { metadata | state = Error "Missing both values" } Nothing Nothing
+        NumberBinary metadata kind Nothing Nothing ->
+            NumberBinary { metadata | state = Error "Missing both values" } kind Nothing Nothing

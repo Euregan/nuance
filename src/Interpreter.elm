@@ -1,6 +1,7 @@
 module Interpreter exposing (..)
 
 import Expression exposing (Expression(..), NumberExpression(..))
+import Node exposing (Node)
 
 
 type Result
@@ -20,8 +21,8 @@ interpretNumber expression =
         NumberConstant number ->
             number
 
-        NumberAddition left right ->
+        NumberBinary Node.NumberAddition left right ->
             interpretNumber left + interpretNumber right
 
-        NumberMultiplication left right ->
+        NumberBinary Node.NumberMultiplication left right ->
             interpretNumber left * interpretNumber right

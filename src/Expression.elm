@@ -10,8 +10,7 @@ type Expression
 
 type NumberExpression
     = NumberConstant Float
-    | NumberAddition NumberExpression NumberExpression
-    | NumberMultiplication NumberExpression NumberExpression
+    | NumberBinary Node.NumberBinary NumberExpression NumberExpression
 
 
 fromNode : Node -> Result Errors Expression
@@ -33,10 +32,10 @@ fromNumberNode node =
         Node.NumberConstant { id } Nothing ->
             Err <| Errors.singleton id "This constant needs to have a value"
 
-        Node.NumberAddition _ (Just left) (Just right) ->
+        Node.NumberBinary _ kind (Just left) (Just right) ->
             case ( fromNumberNode left, fromNumberNode right ) of
                 ( Ok leftExpression, Ok rightExpression ) ->
-                    Ok <| NumberAddition leftExpression rightExpression
+                    Ok <| NumberBinary kind leftExpression rightExpression
 
                 ( Err leftErrors, Err rightErrors ) ->
                     Err <| Errors.union leftErrors rightErrors
@@ -47,10 +46,10 @@ fromNumberNode node =
                 ( Ok _, Err rightErrors ) ->
                     Err rightErrors
 
-        Node.NumberAddition { id } (Just left) Nothing ->
+        Node.NumberBinary { id } _ (Just left) Nothing ->
             Err <|
                 Errors.union
-                    (Errors.singleton id "This addition needs to have two values")
+                    (Errors.singleton id "This needs to have two values")
                     (case fromNumberNode left of
                         Ok _ ->
                             Errors.empty
@@ -59,10 +58,10 @@ fromNumberNode node =
                             errors
                     )
 
-        Node.NumberAddition { id } Nothing (Just right) ->
+        Node.NumberBinary { id } _ Nothing (Just right) ->
             Err <|
                 Errors.union
-                    (Errors.singleton id "This addition needs to have two values")
+                    (Errors.singleton id "This needs to have two values")
                     (case fromNumberNode right of
                         Ok _ ->
                             Errors.empty
@@ -71,46 +70,5 @@ fromNumberNode node =
                             errors
                     )
 
-        Node.NumberAddition { id } Nothing Nothing ->
-            Err <| Errors.singleton id "This addition needs to have two values"
-
-        Node.NumberMultiplication _ (Just left) (Just right) ->
-            case ( fromNumberNode left, fromNumberNode right ) of
-                ( Ok leftExpression, Ok rightExpression ) ->
-                    Ok <| NumberMultiplication leftExpression rightExpression
-
-                ( Err leftErrors, Err rightErrors ) ->
-                    Err <| Errors.union leftErrors rightErrors
-
-                ( Err leftErrors, Ok _ ) ->
-                    Err leftErrors
-
-                ( Ok _, Err rightErrors ) ->
-                    Err rightErrors
-
-        Node.NumberMultiplication { id } (Just left) Nothing ->
-            Err <|
-                Errors.union
-                    (Errors.singleton id "This multiplication needs to have two values")
-                    (case fromNumberNode left of
-                        Ok _ ->
-                            Errors.empty
-
-                        Err errors ->
-                            errors
-                    )
-
-        Node.NumberMultiplication { id } Nothing (Just right) ->
-            Err <|
-                Errors.union
-                    (Errors.singleton id "This multiplication needs to have two values")
-                    (case fromNumberNode right of
-                        Ok _ ->
-                            Errors.empty
-
-                        Err errors ->
-                            errors
-                    )
-
-        Node.NumberMultiplication { id } Nothing Nothing ->
-            Err <| Errors.singleton id "This multiplication needs to have two values"
+        Node.NumberBinary { id } _ Nothing Nothing ->
+            Err <| Errors.singleton id "This needs to have two values"
